@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rfeng.agri.mapper.UserPointMapper">
+
+    <resultMap id="BaseResultMap" type="com.rfeng.agri.model.entity.answerentity.UserPoint">
+            <id property="id" column="id" />
+            <result property="userId" column="user_id" />
+            <result property="point" column="point" />
+            <result property="reason" column="reason" />
+            <result property="source" column="source" />
+            <result property="currentTotal" column="current_total" />
+            <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,user_id,point,reason,source,current_total,
+        create_time
+    </sql>
+</mapper>
