@@ -1,5 +1,6 @@
 package com.rfeng.agri.service.userserviceImpl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.rfeng.agri.model.entity.userentity.User;
 import com.rfeng.agri.service.UserService;
@@ -15,6 +16,10 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     implements UserService{
 
+    @Override
+    public User getUserByPhone(String phone) {
+        return this.getOne(new QueryWrapper<User>().eq("phone", phone));
+    }
 }
 
 

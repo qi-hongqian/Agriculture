@@ -9,5 +9,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
 * @createDate 2025-11-14 15:13:29
 */
 public interface UserService extends IService<User> {
-
+    User getUserByPhone(String phone);
 }
