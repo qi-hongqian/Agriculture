@@ -1,12 +1,15 @@
 package com.rfeng.agri.controller;
 
 import com.rfeng.agri.model.entity.userentity.User;
+import com.rfeng.agri.model.dto.LoginResponse;
 import com.rfeng.agri.service.UserService;
 import com.rfeng.agri.service.CaptchaService;
 import com.rfeng.agri.util.CaptchaUtil;
+import com.rfeng.agri.util.JwtTokenUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -29,42 +32,59 @@ public class LoginController {
     private BCryptPasswordEncoder passwordEncoder;
 
     @Operation(summary = "用户登录", description = "用户使用手机号和密码登录系统")
-    @PostMapping("/login")
-    public Map<String, Object> login(@RequestBody LoginRequest request) {
+    @PostMapping(value = "/login", consumes = "application/json", produces = "application/json")
+    public LoginResponse login(@RequestBody LoginRequest request) {
         
-        Map<String, Object> result = new HashMap<>();
+        LoginResponse response = new LoginResponse();
         
         if (!captchaService.verifyCaptcha(request.getPhone(), request.getCaptcha())) {
-            result.put("success", false);
-            result.put("message", "验证码错误或已过期");
-            return result;
+            response.setSuccess(false);
+            response.setMessage("验证码错误或已过期");
+            return response;
         }
         
         User user = userService.getUserByPhone(request.getPhone());
         
         if (user == null) {
-            result.put("success", false);
-            result.put("message", "用户不存在");
-            return result;
+            response.setSuccess(false);
+            response.setMessage("用户不存在");
+            return response;
         }
         
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            result.put("success", false);
-            result.put("message", "密码错误");
-            return result;
+            response.setSuccess(false);
+            response.setMessage("密码错误");
+            return response;
         }
         
         if (user.getStatus() != 1) {
-            result.put("success", false);
-            result.put("message", "用户已被禁用");
-            return result;
+            response.setSuccess(false);
+            response.setMessage("用户已被禁用");
+            return response;
         }
         
-        result.put("success", true);
-        result.put("message", "登录成功");
-        result.put("user", user);
+        String token = JwtTokenUtil.generateToken(
+            user.getId(), 
+            user.getPhone(), 
+            user.getNickname(), 
+            user.getAvatar(),
+            user.getRole(),
+            user.getStatus()
+        );
+
+        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo();
+        userInfo.setId(user.getId());
+        userInfo.setPhone(user.getPhone());
+        userInfo.setNickname(user.getNickname());
+        userInfo.setAvatar(user.getAvatar());
+        userInfo.setRole(user.getRole());
         
-        return result;
+        response.setSuccess(true);
+        response.setMessage("登录成功");
+        response.setToken(token);
+        response.setUser(userInfo);
+        
+        return response;
     }
     
     @Operation(summary = "获取验证码", description = "获取登录验证码（返回base64格式图片）")
@@ -91,7 +111,7 @@ public class LoginController {
     }
     
     @Operation(summary = "刷新验证码", description = "刷新验证码图片")
-    @PostMapping("/captcha/refresh")
+    @PostMapping(value = "/captcha/refresh", consumes = "application/json", produces = "application/json")
     public Map<String, Object> refreshCaptcha(@RequestBody Map<String, String> request) {
         
         Map<String, Object> result = new HashMap<>();
@@ -119,33 +139,10 @@ public class LoginController {
         return result;
     }
 
+    @Data
     public static class LoginRequest {
         private String phone;
         private String password;
         private String captcha;
-        
-        public String getPhone() {
-            return phone;
-        }
-        
-        public void setPhone(String phone) {
-            this.phone = phone;
-        }
-        
-        public String getPassword() {
-            return password;
-        }
-        
-        public void setPassword(String password) {
-            this.password = password;
-        }
-        
-        public String getCaptcha() {
-            return captcha;
-        }
-        
-        public void setCaptcha(String captcha) {
-            this.captcha = captcha;
-        }
     }
 }
