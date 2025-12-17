@@ -162,7 +162,64 @@ public class MinioUtil {
     }
 
     /**
-     * 创建桶（如果不存在）
+     * 将临时头像重命名为正式头像
+     *
+     * @param tempAvatarUrl 临时头像URL (如：/api/avatar/temp_xxx.jpg)
+     * @param userId 用户ID
+     * @return 正式头像URL (如：/api/avatar/avatar_userId_xxx.jpg)
+     */
+    public String renameTempAvatarToFormal(String tempAvatarUrl, Long userId) {
+        try {
+            // 从URL中提取临时文件名
+            String tempFileName = tempAvatarUrl.substring(tempAvatarUrl.lastIndexOf("/") + 1);
+            
+            // 生成正式文件名
+            String fileExtension = "";
+            if (tempFileName.contains(".")) {
+                fileExtension = tempFileName.substring(tempFileName.lastIndexOf("."));
+            }
+            String formalFileName = "avatar_" + userId + "_" + UUID.randomUUID().toString() + fileExtension;
+            
+            // 从MinIO中读取临时文件
+            InputStream tempFileStream = minioClient.getObject(
+                    io.minio.GetObjectArgs.builder()
+                            .bucket(avatarBucket)
+                            .object(tempFileName)
+                            .build()
+            );
+            
+            // 上传为正式文件
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(avatarBucket)
+                            .object(formalFileName)
+                            .stream(tempFileStream, tempFileStream.available(), -1)
+                            .build()
+            );
+            
+            // 删除临时文件
+            try {
+                minioClient.removeObject(
+                        io.minio.RemoveObjectArgs.builder()
+                                .bucket(avatarBucket)
+                                .object(tempFileName)
+                                .build()
+                );
+                log.info("删除临时头像文件: {}", tempFileName);
+            } catch (Exception e) {
+                log.warn("删除临时头像文件失败: {}", tempFileName);
+            }
+            
+            log.info("临时头像重命名为正式头像: {} -> {}", tempFileName, formalFileName);
+            return getAvatarUrl(formalFileName);
+        } catch (Exception e) {
+            log.error("重命名临时头像失败: ", e);
+            throw new RuntimeException("重命名临时头像失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 创建桶
      *
      * @param bucketName 桶名称
      */

@@ -87,6 +87,50 @@ public class LoginController {
         return response;
     }
     
+    @Operation(summary = "快速登录（测试用）", description = "一键登录为ID为1的用户（仅用于测试）")
+    @PostMapping(value = "/quick-login", consumes = "application/json", produces = "application/json")
+    public LoginResponse quickLogin() {
+        
+        LoginResponse response = new LoginResponse();
+        
+        User user = userService.getById(1L);
+        
+        if (user == null) {
+            response.setSuccess(false);
+            response.setMessage("测试用户不存在");
+            return response;
+        }
+        
+        if (user.getStatus() != 1) {
+            response.setSuccess(false);
+            response.setMessage("用户已被禁用");
+            return response;
+        }
+        
+        String token = JwtTokenUtil.generateToken(
+            user.getId(), 
+            user.getPhone(), 
+            user.getNickname(), 
+            user.getAvatar(),
+            user.getRole(),
+            user.getStatus()
+        );
+
+        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo();
+        userInfo.setId(user.getId());
+        userInfo.setPhone(user.getPhone());
+        userInfo.setNickname(user.getNickname());
+        userInfo.setAvatar(user.getAvatar());
+        userInfo.setRole(user.getRole());
+        
+        response.setSuccess(true);
+        response.setMessage("快速登录成功");
+        response.setToken(token);
+        response.setUser(userInfo);
+        
+        return response;
+    }
+    
     @Operation(summary = "获取验证码", description = "获取登录验证码（返回base64格式图片）")
     @GetMapping("/captcha")
     public Map<String, Object> getCaptcha(

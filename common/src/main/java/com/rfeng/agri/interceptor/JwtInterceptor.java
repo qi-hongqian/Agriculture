@@ -14,6 +14,12 @@ public class JwtInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String requestPath = request.getRequestURI();
+        String method = request.getMethod();
+        
+        // 放行OPTIONS预检请求
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
         
         if (requestPath.startsWith("/api/auth/") || 
             requestPath.startsWith("/api/user/register") ||
@@ -26,7 +32,7 @@ public class JwtInterceptor implements HandlerInterceptor {
             requestPath.startsWith("/v3/api-docs")) {
             return true;
         }
-        
+
         String authHeader = request.getHeader("Authorization");
         
         if (authHeader == null || authHeader.isEmpty()) {
