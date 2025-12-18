@@ -26,6 +26,7 @@ public class JwtInterceptor implements HandlerInterceptor {
             requestPath.startsWith("/api/user/avatar/temp-upload") ||
             requestPath.startsWith("/api/user/avatar/temp-delete") ||
             requestPath.startsWith("/api/avatar/") ||
+            requestPath.startsWith("/api/forum-media/") ||
             requestPath.startsWith("/doc.html") || 
             requestPath.startsWith("/webjars/") ||
             requestPath.startsWith("/swagger-resources/") ||

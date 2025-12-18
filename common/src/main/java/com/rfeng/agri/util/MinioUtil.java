@@ -74,6 +74,16 @@ public class MinioUtil {
     }
 
     /**
+     * 获取论坛媒体访问URL
+     *
+     * @param fileName 文件名
+     * @return 访问URL
+     */
+    public String getForumMediaUrl(String fileName) {
+        return "/api/forum-media/" + fileName;
+    }
+
+    /**
      * 检查文件是否存在
      *
      * @param fileName 文件名
@@ -170,17 +180,14 @@ public class MinioUtil {
      */
     public String renameTempAvatarToFormal(String tempAvatarUrl, Long userId) {
         try {
-            // 从URL中提取临时文件名
             String tempFileName = tempAvatarUrl.substring(tempAvatarUrl.lastIndexOf("/") + 1);
             
-            // 生成正式文件名
             String fileExtension = "";
             if (tempFileName.contains(".")) {
                 fileExtension = tempFileName.substring(tempFileName.lastIndexOf("."));
             }
             String formalFileName = "avatar_" + userId + "_" + UUID.randomUUID().toString() + fileExtension;
             
-            // 从MinIO中读取临时文件
             InputStream tempFileStream = minioClient.getObject(
                     io.minio.GetObjectArgs.builder()
                             .bucket(avatarBucket)
@@ -188,7 +195,6 @@ public class MinioUtil {
                             .build()
             );
             
-            // 上传为正式文件
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(avatarBucket)
@@ -197,7 +203,6 @@ public class MinioUtil {
                             .build()
             );
             
-            // 删除临时文件
             try {
                 minioClient.removeObject(
                         io.minio.RemoveObjectArgs.builder()
@@ -240,5 +245,146 @@ public class MinioUtil {
         } catch (Exception e) {
             log.error("创建桶失败: ", e);
         }
+    }
+
+    /**
+     * 批量上传临时论坛图片
+     *
+     * @param files 图片文件数组
+     * @return 文件访问URL列表
+     */
+    public java.util.List<String> batchUploadTempForumImages(MultipartFile[] files) {
+        java.util.List<String> urls = new java.util.ArrayList<>();
+        
+        for (MultipartFile file : files) {
+            try {
+                createBucketIfNotExists(avatarBucket);
+                
+                String originalFilename = file.getOriginalFilename();
+                String fileExtension = "";
+                if (originalFilename != null && originalFilename.contains(".")) {
+                    fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                }
+                String fileName = "temp_forum_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString() + fileExtension;
+                
+                try (InputStream inputStream = file.getInputStream()) {
+                    minioClient.putObject(
+                            PutObjectArgs.builder()
+                                    .bucket(avatarBucket)
+                                    .object(fileName)
+                                    .stream(inputStream, file.getSize(), -1)
+                                    .contentType(file.getContentType())
+                                    .build()
+                    );
+                }
+                
+                String url = getForumMediaUrl(fileName);
+                urls.add(url);
+                log.info("上传临时论坛图片: {}", fileName);
+            } catch (Exception e) {
+                log.error("上传临时论坛图片失败: {}", file.getOriginalFilename(), e);
+            }
+        }
+        
+        return urls;
+    }
+
+    /**
+     * 将临时论坛图片批量重命名为正式图片
+     *
+     * @param tempImageUrls 临时图片URL列表
+     * @param userId 用户ID
+     * @param postId 帖子ID
+     * @return 正式图片URL列表
+     */
+    public java.util.List<String> batchRenameTempForumImagesToFormal(java.util.List<String> tempImageUrls, Long userId, Long postId) {
+        java.util.List<String> formalUrls = new java.util.ArrayList<>();
+        
+        for (String tempUrl : tempImageUrls) {
+            try {
+                String tempFileName = tempUrl.substring(tempUrl.lastIndexOf("/") + 1);
+                
+                String fileExtension = "";
+                if (tempFileName.contains(".")) {
+                    fileExtension = tempFileName.substring(tempFileName.lastIndexOf("."));
+                }
+                String formalFileName = "forum_" + postId + "_" + userId + "_" + UUID.randomUUID().toString() + fileExtension;
+                
+                StatObjectResponse stat = minioClient.statObject(
+                        io.minio.StatObjectArgs.builder()
+                                .bucket(avatarBucket)
+                                .object(tempFileName)
+                                .build()
+                );
+                
+                InputStream tempFileStream = minioClient.getObject(
+                        io.minio.GetObjectArgs.builder()
+                                .bucket(avatarBucket)
+                                .object(tempFileName)
+                                .build()
+                );
+                
+                minioClient.putObject(
+                        PutObjectArgs.builder()
+                                .bucket(avatarBucket)
+                                .object(formalFileName)
+                                .stream(tempFileStream, stat.size(), -1)
+                                .build()
+                );
+                
+                try {
+                    minioClient.removeObject(
+                            io.minio.RemoveObjectArgs.builder()
+                                    .bucket(avatarBucket)
+                                    .object(tempFileName)
+                                    .build()
+                    );
+                    log.info("删除临时论坛图片: {}", tempFileName);
+                } catch (Exception e) {
+                    log.warn("删除临时论坛图片失败: {}", tempFileName);
+                }
+                
+                String formalUrl = getForumMediaUrl(formalFileName);
+                formalUrls.add(formalUrl);
+                log.info("临时论坛图片重命名为正式: {} -> {}", tempFileName, formalFileName);
+            } catch (Exception e) {
+                log.error("重命名临时论坛图片失败: {}", tempUrl, e);
+            }
+        }
+        
+        return formalUrls;
+    }
+
+    /**
+     * 批量删除论坛图片
+     *
+     * @param imageUrls 图片URL列表
+     * @return 是否全部删除成功
+     */
+    public boolean batchDeleteForumImages(java.util.List<String> imageUrls) {
+        boolean allSuccess = true;
+        
+        for (String imageUrl : imageUrls) {
+            if (imageUrl == null || imageUrl.isEmpty()) {
+                continue;
+            }
+            
+            try {
+                String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+                
+                minioClient.removeObject(
+                        io.minio.RemoveObjectArgs.builder()
+                                .bucket(avatarBucket)
+                                .object(fileName)
+                                .build()
+                );
+                log.info("删除论坛图片: {}", fileName);
+            } catch (Exception e) {
+                log.error("删除论坛图片失败: {}", imageUrl, e);
+                allSuccess = false;
+            }
+        }
+        
+        return allSuccess;
     }
 }
