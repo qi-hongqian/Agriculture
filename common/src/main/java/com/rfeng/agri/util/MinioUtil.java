@@ -123,7 +123,7 @@ public class MinioUtil {
     }
 
     /**
-     * 上传临时头像（注册前预览用）
+     * 上传临时头像
      *
      * @param file 头像文件
      * @return 文件访问URL

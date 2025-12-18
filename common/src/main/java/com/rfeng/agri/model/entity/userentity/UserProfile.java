@@ -2,6 +2,7 @@ package com.rfeng.agri.model.entity.userentity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableId;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
@@ -18,6 +19,7 @@ import lombok.experimental.Accessors;
 @Schema(description = "用户资料表 ")
 public class UserProfile {
 
+  @TableId
   @Schema(description = "用户ID（与user表一对一）")
   private long userId;
  
@@ -30,11 +32,11 @@ public class UserProfile {
   private long gender;
  
 
-  @Schema(description = "地区（如“山东省-济南市”）")
+  @Schema(description = "地区（如山东省-济南市）")
   private String region;
  
 
-  @Schema(description = "职业（如“种植户”“农资商”）")
+  @Schema(description = "职业（如种植户农资商）")
   private String profession;
  
 
